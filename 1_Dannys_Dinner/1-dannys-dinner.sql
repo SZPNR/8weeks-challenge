@@ -52,7 +52,7 @@ group by product_name;
 
 -- 6 Which item was purchased first by the customer after they became a member?
 
-with min_date as
+with after_date as
 (
 select sales.customer_id, product_id, order_date,
 dense_rank() over(partition by sales.customer_id
@@ -62,14 +62,49 @@ on sales.customer_id = members.customer_id
 where order_date > join_date
 )
 
-select min_date.customer_id, product_name, order_date
-from min_date join dannys_diner.menu
-on min_date.product_id = menu.product_id
+select after_date.customer_id, product_name, order_date
+from after_date join dannys_diner.menu
+on after_date.product_id = menu.product_id
 where dense_rank = 1
 order by order_date
 
 -- 7. Which item was purchased just before the customer became a member?
+
+with before_member as
+(
+select sales.customer_id, product_id, order_date,
+dense_rank() over(partition by sales.customer_id
+order by order_date)
+from dannys_diner.sales right join dannys_diner.members
+on sales.customer_id = members.customer_id
+where order_date < join_date
+)
+
+select before_member.customer_id, product_name, order_date
+from before_member join dannys_diner.menu
+on before_member.product_id = menu.product_id
+where dense_rank = 1
+order by customer_id
+
 -- 8. What is the total items and amount spent for each member before they became a member?
+
+with total_before as 
+(
+select sales.customer_id, sales.product_id, order_date, price
+from dannys_diner.menu join dannys_diner.sales
+on sales.product_id = menu.product_id
+right join dannys_diner.members
+on sales.customer_id = members.customer_id
+where order_date < join_date
+)
+
+select customer_id, count(distinct(product_id)), sum(price)
+from total_before
+group by customer_id
+
 -- 9. If each $1 spent equates to 10 points and sushi has a 2x points multiplier how many points would each customer have?
+
+
+
 -- 10. In the first week after a customer joins the program (including their join date) they earn 2x points on all items, not just sushi -
 -- how many points do customer A and B have at the end of January?
